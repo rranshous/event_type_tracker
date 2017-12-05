@@ -11,7 +11,13 @@ class Condition
   end
 
   def match? data
-    JMESPath.search query, data
+    r = JMESPath.search query, data
+    puts "condition match? [#{query}] :: #{data} == #{r}"
+    r
+  end
+
+  def to_s
+    "<#{self.class.name} #{query}>"
   end
 end
 
@@ -34,7 +40,7 @@ end
 class Broker
   include Singleton
 
-  attr_accessor :subscribers
+  attr_accessor :subscribers, :to_send
 
   class Subscriber
     attr_accessor :callback, :criteria
@@ -45,6 +51,7 @@ class Broker
     end
 
     def call data
+      puts "subscriber calling [#{criteria}] :: #{data}"
       self.callback.call data
     end
 
@@ -55,6 +62,7 @@ class Broker
 
   def initialize
     self.subscribers = []
+    self.to_send = []
   end
 
   def subscribe criteria, &blk
@@ -62,7 +70,26 @@ class Broker
   end
 
   def event data
-    self.subscribers.select { |s| s.match? data }.each { |s| s.call data }
+    enqueue_event data
+    send_events
+  end
+
+  def publish data
+    enqueue_event data
+  end
+
+  private
+
+  def send_events
+    while event_data = self.to_send.shift
+      puts "shifted: #{event_data}"
+      self.subscribers.select { |s| s.match? event_data }.each { |s| s.call event_data }
+    end
+  end
+
+  def enqueue_event data
+    puts "enqueued #{data}"
+    self.to_send << data
   end
 end
 
@@ -84,7 +111,11 @@ class SimpleAgent
   end
 
   def handle action, &blk
-    # TODO
+    subscribe Condition.new("action.request == '#{action}'") do |event|
+      puts "Simple handling action request: #{action} :: #{event}"
+      response = blk.call state
+      broker.publish({ 'action.response' => action, 'response' => response })
+    end
   end
 
   def periodically &blk
