@@ -7,6 +7,14 @@ class State
     self.event_types = Array.new
   end
 
+  def marshal_dump
+    [@event_types]
+  end
+
+  def marshal_load array
+    @event_types, _ = array
+  end
+
   def inspect
     "<State event_types=#{self.event_types}>"
   end
@@ -37,7 +45,6 @@ cleanup do |state|
   state.event_types = state.event_types.uniq
 end
 
-
 # FOR TESTING
 events = [
   { 'eventType' => 'one.two' },
@@ -48,6 +55,10 @@ events = [
   { 'bob' => 'is a fine name' },
   { 'action' => { 'request' => 'unique_event_types.json' } }
 ]
+
+SimpleAgent.instance.subscribe Condition.new('action.response != null') do |event|
+  puts "report #{event['action']['response']}: #{event['response']}"
+end
 
 events.each { |e| Broker.instance.event e }
 

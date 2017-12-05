@@ -114,7 +114,7 @@ class SimpleAgent
     subscribe Condition.new("action.request == '#{action}'") do |event|
       puts "Simple handling action request: #{action} :: #{event}"
       response = blk.call state
-      broker.publish({ 'action.response' => action, 'response' => response })
+      broker.publish({ 'action' => { 'response' => action }, 'response' => response })
     end
   end
 
