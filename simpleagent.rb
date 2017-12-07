@@ -139,13 +139,15 @@ class StateLoader
       Marshal.load File.read(file_path)
     end
     state = states.reduce(&:+)
-    state
+    state || state_class.new
   end
 end
 
 class StateSaver
   def self.save state_object
-    filename = Pathname.new File.join(STATE_DIR,"#{Time.now.to_f}.rmarshal")
+    pid = Process.pid
+    @time ||= Time.now.to_f
+    filename = Pathname.new File.join(STATE_DIR, "#{@time}-#{pid}.rmarshal")
     File.open(filename, 'wb') do |fh|
       fh.write Marshal.dump(state_object)
     end
