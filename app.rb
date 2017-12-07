@@ -1,4 +1,6 @@
 require_relative 'simpleagent'
+require_relative 'network_broker_client.rb'
+require 'thread'
 
 class State
   # TODO: make generic and cool
@@ -62,25 +64,39 @@ SimpleAgent.instance.periodically do |state|
   puts "saved: #{path}"
 end
 
-# FOR TESTING
-events = [
-  { 'eventType' => 'one.two' },
-  { 'eventType' => 'one' },
-  { 'eventType' => 'three' },
-  { 'eventType' => 'three' },
-  { 'eventType' => 'three' },
-  { 'bob' => 'is a fine name' },
-  { 'action' => { 'request' => 'unique_event_types.json' } }
-]
-
 SimpleAgent.instance.subscribe Condition.new('action.response != null') do |event|
   puts "report #{event['action']['response']}: #{event['response']}"
 end
 
-events.each { |e| Broker.instance.event e }
+# FOR TESTING
+# events = [
+#   { 'eventType' => 'one.two' },
+#   { 'eventType' => 'one' },
+#   { 'eventType' => 'three' },
+#   { 'eventType' => 'three' },
+#   { 'eventType' => 'three' },
+#   { 'bob' => 'is a fine name' },
+#   { 'action' => { 'request' => 'unique_event_types.json' } }
+# ]
+# events.each { |e| Broker.instance.event e }
+
+# setup the network broker connection
+events_in = SizedQueue.new 10
+endpoint = OpenStruct.new(host: 'localhost', port: 7777)
+name = "client-0"
+puts "network name: #{name}"
+Thread.new(NetworkBrokerClient.new(endpoint, name), events_in) do |network_broker, event_queue|
+  puts "starting network broker background thread, listening"
+  network_broker.listen do |event|
+    puts "network broker got event: #{event}"
+    event_queue << event
+  end
+end
 
 # have to keep the proc from dying by holding in a loop here
 loop do
-  sleep 3
-  puts "state: #{SimpleAgent.instance.state}"
+  puts "waiting for event data"
+  event_data = events_in.pop
+  puts "got event data: #{event_data}"
+  Broker.instance.event event_data
 end

@@ -27,6 +27,10 @@ class NetworkBroker
       socket.flush
     end
     true
+  rescue Errno::EPIPE
+    puts "broken pipe [#{receiver_id}], removing receiver"
+    receivers.delete receiver_id
+    false
   end
 
   def start!

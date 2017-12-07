@@ -6,9 +6,9 @@ class NetworkBrokerClient
 
   attr_accessor :receiver_id, :endpoint
 
-  def initialize endpoint
+  def initialize endpoint, receiver_id=SecureRandom.uuid
     self.endpoint = endpoint
-    self.receiver_id ||= SecureRandom.uuid
+    self.receiver_id = receiver_id
     STDERR.puts "config: #{config}"
   end
 

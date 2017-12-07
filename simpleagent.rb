@@ -119,7 +119,7 @@ class SimpleAgent
   end
 
   def periodically &blk
-    task = Concurrent::TimerTask.new(execution_interval: 3, timeout_interval: 5) do
+    task = Concurrent::TimerTask.new(execution_interval: 10, timeout_interval: 5) do
       puts "in concurrent"
       blk.call state
     end
