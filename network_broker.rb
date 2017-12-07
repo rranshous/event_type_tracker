@@ -1,3 +1,4 @@
+require 'thin'
 require 'sinatra'
 require 'thread'
 require 'socket'
@@ -20,17 +21,17 @@ class NetworkBroker
   end
 
   def publish receiver_id, data
-    log "publishing [#{receiver_id}]: #{data}"
+    log "publishing [#{receiver_id}]"
     if !receivers.include?(receiver_id)
       log "receiver [#{receiver_id}] not found in #{receivers.keys}"
       return false
     else
-      log "adding to queue [#{receiver_id}]: #{data}"
+      log "adding to queue [#{receiver_id}]"
       to_publish << [receiver_id, data]
     end
     true
   rescue Errno::EPIPE
-    puts "broken pipe [#{receiver_id}], removing receiver"
+    log "broken pipe [#{receiver_id}], removing receiver"
     receivers.delete receiver_id
     false
   end
@@ -51,11 +52,12 @@ class NetworkBroker
   def work_publish
     loop do
       receiver_id, data = to_publish.pop
-      log "workign publish #{receiver_id}: #{data}"
+      log "queue length: #{to_publish.length}"
+      log "working publish #{receiver_id}"
       socket = receivers[receiver_id]
-      log "writing #{receiver_id}: #{data} :: #{socket}"
+      log "writing #{receiver_id} :: #{socket}"
       socket.write("#{data}\n")
-      log "flushing #{receiver_id}: #{data}"
+      log "flushing #{receiver_id}"
       socket.flush
     end
   end
@@ -78,7 +80,7 @@ set :network_broker, NetworkBroker.new
 
 post "/injest/:receiver_id" do |receiver_id|
   data = request.body.read
-  log "got data: #{data}"
+  log "got data"
   halt 400 unless JSON.load(data)
   log "datas clean, publishing"
   halt 404 unless settings.network_broker.publish receiver_id, data

@@ -39,6 +39,11 @@ where 'eventType != null' do |event, state|
   state.event_types << event_type
 end
 
+where 'true == true' do |event|
+  puts "start sleeping"
+  sleep 1
+end
+
 # block will run when the report is requested
 # results of block eval will be returned to requester
 report 'unique_event_types.json' do |state|
@@ -88,15 +93,13 @@ puts "network name: #{name}"
 Thread.new(NetworkBrokerClient.new(endpoint, name), events_in) do |network_broker, event_queue|
   puts "starting network broker background thread, listening"
   network_broker.listen do |event|
-    puts "network broker got event: #{event}"
     event_queue << event
   end
 end
 
 # have to keep the proc from dying by holding in a loop here
 loop do
-  puts "waiting for event data"
   event_data = events_in.pop
-  puts "got event data: #{event_data}"
+  puts "queue length: #{events_in.length}"
   Broker.instance.event event_data
 end
