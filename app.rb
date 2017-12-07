@@ -22,8 +22,14 @@ class State
   def to_s
     inspect
   end
-end
 
+  def + other
+    s = self.class.new
+    s.event_types += self.event_types
+    s.event_types += other.event_types
+    s
+  end
+end
 
 # block will run for each event observed
 where 'eventType != null' do |event, state|
@@ -45,6 +51,16 @@ cleanup do |state|
   state.event_types = state.event_types.uniq
 end
 
+# load up some state for the agent
+# TODO: move state management elsewhere
+state = StateLoader.load(State)
+SimpleAgent.instance.state = state
+SimpleAgent.instance.periodically do |state|
+  # seems like some sort of locking should be occuring right now
+  path = StateSaver.save(state)
+  puts "saved: #{path}"
+end
+
 # FOR TESTING
 events = [
   { 'eventType' => 'one.two' },
@@ -62,6 +78,7 @@ end
 
 events.each { |e| Broker.instance.event e }
 
+# have to keep the proc from dying by holding in a loop here
 loop do
   sleep 3
   puts "state: #{SimpleAgent.instance.state}"

@@ -69,13 +69,13 @@ class Broker
     self.subscribers << Subscriber.new(criteria, &blk)
   end
 
+  def publish data
+    enqueue_event data
+  end
+
   def event data
     enqueue_event data
     send_events
-  end
-
-  def publish data
-    enqueue_event data
   end
 
   private
@@ -119,7 +119,7 @@ class SimpleAgent
   end
 
   def periodically &blk
-    task = Concurrent::TimerTask.new(execution_interval: 5, timeout_interval: 5) do
+    task = Concurrent::TimerTask.new(execution_interval: 3, timeout_interval: 5) do
       puts "in concurrent"
       blk.call state
     end
@@ -129,5 +129,26 @@ class SimpleAgent
 
   def broker
     Broker.instance
+  end
+end
+
+STATE_DIR = './state'
+class StateLoader
+  def self.load state_class
+    states = Dir.glob("#{STATE_DIR}/*.rmarshal").map do |file_path|
+      Marshal.load File.read(file_path)
+    end
+    state = states.reduce(&:+)
+    state
+  end
+end
+
+class StateSaver
+  def self.save state_object
+    filename = Pathname.new File.join(STATE_DIR,"#{Time.now.to_f}.rmarshal")
+    File.open(filename, 'wb') do |fh|
+      fh.write Marshal.dump(state_object)
+    end
+    filename
   end
 end
