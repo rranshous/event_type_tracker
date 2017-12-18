@@ -3,6 +3,22 @@ require 'thread'
 require 'concurrent'
 require 'jmespath'
 
+def where query_string, &blk
+  # register ourselve as a subscriber to the queried events
+  condition = Condition.new query_string
+  SimpleAgent.instance.subscribe(condition, &blk)
+end
+
+def report report_name, &blk
+  # register an report generator
+  SimpleAgent.instance.handle(report_name, &blk)
+end
+
+def cleanup &blk
+  # register a periodic task
+  SimpleAgent.instance.periodically(&blk)
+end
+
 class Condition
   attr_accessor :query
 
@@ -18,22 +34,6 @@ class Condition
   def to_s
     "<#{self.class.name} #{query}>"
   end
-end
-
-def where query_string, &blk
-  # register ourselve as a subscriber to the queried events
-  condition = Condition.new query_string
-  SimpleAgent.instance.subscribe(condition, &blk)
-end
-
-def report report_name, &blk
-  # register an report generator
-  SimpleAgent.instance.handle(report_name, &blk)
-end
-
-def cleanup &blk
-  # register a periodic task
-  SimpleAgent.instance.periodically(&blk)
 end
 
 class Broker
@@ -71,8 +71,8 @@ class Broker
     enqueue_event data
   end
 
-  def event data
-    enqueue_event data
+  def event data = nil
+    enqueue_event(data) unless data.nil?
     send_events
   end
 
@@ -92,12 +92,16 @@ end
 class SimpleAgent
   include Singleton
 
-  attr_accessor :tasks, :state, :lock, :broker
+  attr_accessor :tasks, :state, :lock, :broker, :http_listener, :http_event_receiver, :running, :event_queue
 
   def initialize
     self.tasks = []
     self.state = State.new
     self.lock = Mutex.new
+    self.http_listener = HttpListener.new
+    self.http_event_receiver = HttpEventReceiver.new http_listener: http_listener
+    self.broker = Broker.instance
+    self.running = false
   end
 
   def subscribe criteria, &blk
@@ -107,9 +111,10 @@ class SimpleAgent
   end
 
   def handle action, &blk
-    subscribe Condition.new("action.request == '#{action}'") do |event|
+    http_listener.add_listener("/action/#{action}") do |req, res|
       response = blk.call state
-      broker.publish({ 'action' => { 'response' => action }, 'response' => response })
+      res.body = JSON.dump(response)
+      res.status = 200
     end
   end
 
@@ -121,8 +126,57 @@ class SimpleAgent
     self.tasks << task
   end
 
-  def broker
-    Broker.instance
+  def start
+    puts "starting"
+    self.running = true
+    setup_event_queue
+    start_http_listener
+  end
+
+  def tick
+    event_data = event_queue.pop(true)
+    puts "queue length: #{event_queue.length}"
+    Broker.instance.event event_data
+    :SUCCESS
+  rescue ThreadError
+    :NO_EVENTS
+  end
+
+  def run!
+    puts "running!"
+    trap 'SIGINT' do stop end;
+    start
+    while running
+      case tick
+      when :NO_EVENTS
+        sleep 0.1
+      end
+    end
+  end
+
+  def stop
+    puts "shutting down"
+    running = false
+    shutdown_http_listener
+    http_event_receiver.shutdown
+  end
+
+  private
+
+  def start_http_listener
+    http_listener.start!
+  end
+
+  def stop_http_listener
+    http_listener.shutdown
+  end
+
+  def setup_event_queue
+    self.event_queue = SizedQueue.new(10)
+    http_event_receiver.handle do |event_data|
+      puts "adding event: #{event_data}"
+      event_queue << event_data
+    end
   end
 end
 

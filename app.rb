@@ -1,5 +1,6 @@
 require_relative 'simpleagent'
 require_relative 'http_event_receiver'
+require_relative 'http_listener'
 require 'thread'
 
 
@@ -67,30 +68,5 @@ SimpleAgent.instance.periodically do |state|
 end
 # TODO: periodically load the new state rollup
 
-events_in = SizedQueue.new(10)
-http_event_receiver = HttpEventReceiver.new
-Thread.new do
-  http_event_receiver.listen! do |event_data|
-    events_in << event_data
-  end
-end
-
-$running = true
-trap 'SIGINT' do
-  puts "shutting down"
-  $running = false
-  http_event_receiver.shutdown
-end
-
-# have to keep the proc from dying by holding in a loop here
-while $running
-  begin
-    event_data = events_in.pop(true)
-    puts "queue length: #{events_in.length}"
-    Broker.instance.event event_data
-  rescue ThreadError
-    sleep 0.1
-  end
-end
-
+SimpleAgent.instance.run!
 puts "DONE"

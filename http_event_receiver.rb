@@ -1,30 +1,22 @@
 require 'webrick'
 
 class HttpEventReceiver
+  attr_accessor :http_listener
 
-  PORT = 8080
-
-  attr_accessor :server
-
-  def initialize
-    self.server = WEBrick::HTTPServer.new :Port => PORT
+  def initialize http_listener: nil
+    self.http_listener = http_listener
   end
 
-  def listen!
-    server.mount_proc '/event' do |req, res|
-      puts "got req: #{req}"
+  def handle
+    http_listener.add_listener('/event') do |req, res|
       begin
         event = JSON.parse req.body
         yield event
         res.status = 201
-      rescue
+      rescue => ex
+        puts "#{self.class.name}] Ex: #{ex}"
         res.status = 500
       end
     end
-    server.start
-  end
-
-  def shutdown
-    server.shutdown
   end
 end
