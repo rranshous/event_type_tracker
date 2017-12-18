@@ -1,7 +1,6 @@
 require_relative 'simpleagent'
-require_relative 'http_event_receiver'
+require_relative 'network_broker_client.rb'
 require 'thread'
-
 
 class State
   # TODO: make generic and cool
@@ -37,8 +36,12 @@ end
 # block will run for each event observed
 where 'eventType != null' do |event, state|
   event_type = event['eventType']
-  puts "adding event type: #{event_type}"
   state.event_types << event_type
+end
+
+where 'true == true' do |event|
+  puts "start sleeping"
+  sleep 1
 end
 
 # block will run when the report is requested
@@ -65,32 +68,26 @@ SimpleAgent.instance.periodically do |state|
   path = StateSaver.save(state)
   puts "saved: #{path}"
 end
-# TODO: periodically load the new state rollup
 
-events_in = SizedQueue.new(10)
-http_event_receiver = HttpEventReceiver.new
-Thread.new do
-  http_event_receiver.listen! do |event_data|
-    events_in << event_data
-  end
+SimpleAgent.instance.subscribe Condition.new('action.response != null') do |event|
+  puts "report #{event['action']['response']}: #{event['response']}"
 end
 
-$running = true
-trap 'SIGINT' do
-  puts "shutting down"
-  $running = false
-  http_event_receiver.shutdown
+# setup the network broker connection
+events_in = SizedQueue.new 10
+endpoint = OpenStruct.new(host: 'localhost', port: 7777)
+name = "client-0"
+puts "network name: #{name}"
+Thread.new(NetworkBrokerClient.new(endpoint, name), events_in) do |network_broker, event_queue|
+  puts "starting network broker background thread, listening"
+  network_broker.listen do |event|
+    event_queue << event
+  end
 end
 
 # have to keep the proc from dying by holding in a loop here
-while $running
-  begin
-    event_data = events_in.pop(true)
-    puts "queue length: #{events_in.length}"
-    Broker.instance.event event_data
-  rescue ThreadError
-    sleep 0.1
-  end
+loop do
+  event_data = events_in.pop
+  puts "queue length: #{events_in.length}"
+  Broker.instance.event event_data
 end
-
-puts "DONE"
