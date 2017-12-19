@@ -56,7 +56,4 @@ cleanup do |state|
   state.event_types = state.event_types.uniq
 end
 
-# blocking until sigint
-SimpleAgent.instance.run!
-
 puts "DONE"

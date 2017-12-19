@@ -181,6 +181,7 @@ class SimpleAgent
   def save_state
     path = StateSaver.save(state)
     puts "saved: #{path}"
+    path
   end
 
   private
@@ -227,4 +228,8 @@ class StateSaver
     end
     filename
   end
+end
+
+at_exit do
+  SimpleAgent.instance.run!
 end
