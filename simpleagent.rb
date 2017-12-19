@@ -122,6 +122,7 @@ class SimpleAgent
     task = Concurrent::TimerTask.new(execution_interval: 10, timeout_interval: 10) do
       blk.call state
     end
+    puts "adding task: #{blk}"
     task.execute
     self.tasks << task
   end
@@ -147,7 +148,7 @@ class SimpleAgent
 
   def run!
     puts "running!"
-    trap 'SIGINT' do stop end;
+    trap 'SIGINT' do self.running = false end;
     start
     while running
       case tick
@@ -155,14 +156,22 @@ class SimpleAgent
         sleep 0.1
       end
     end
+    stop
   end
 
   def stop
     puts "shutting down"
-    running = false
+    self.running = false
     stop_http_listener
     stop_background_tasks
     save_state
+  end
+
+  def start_background_saver
+    periodically do |state|
+      puts "periodic background save"
+      save_state
+    end
   end
 
   def load_state
@@ -172,14 +181,6 @@ class SimpleAgent
   def save_state
     path = StateSaver.save(state)
     puts "saved: #{path}"
-  end
-
-  def start_background_saver
-    # load up some state for the agent
-    load_state
-    periodically do |state|
-      save_state
-    end
   end
 
   private

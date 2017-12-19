@@ -56,12 +56,6 @@ cleanup do |state|
   state.event_types = state.event_types.uniq
 end
 
-# load up some state for the agent
-SimpleAgent.instance.load_state
-SimpleAgent.instance.periodically do |state|
-  SimpleAgent.instance.save_state
-end
-
 # blocking until sigint
 SimpleAgent.instance.run!
 
