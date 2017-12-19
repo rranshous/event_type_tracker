@@ -119,7 +119,7 @@ class SimpleAgent
   end
 
   def periodically &blk
-    task = Concurrent::TimerTask.new(execution_interval: 10, timeout_interval: 5) do
+    task = Concurrent::TimerTask.new(execution_interval: 10, timeout_interval: 10) do
       blk.call state
     end
     task.execute
@@ -131,6 +131,9 @@ class SimpleAgent
     self.running = true
     setup_event_queue
     start_http_listener
+    load_state
+    start_background_saver
+    puts "Started with state: #{state}"
   end
 
   def tick
@@ -157,8 +160,26 @@ class SimpleAgent
   def stop
     puts "shutting down"
     running = false
-    shutdown_http_listener
-    http_event_receiver.shutdown
+    stop_http_listener
+    stop_background_tasks
+    save_state
+  end
+
+  def load_state
+    self.state = StateLoader.load(State)
+  end
+
+  def save_state
+    path = StateSaver.save(state)
+    puts "saved: #{path}"
+  end
+
+  def start_background_saver
+    # load up some state for the agent
+    load_state
+    periodically do |state|
+      save_state
+    end
   end
 
   private
@@ -169,6 +190,10 @@ class SimpleAgent
 
   def stop_http_listener
     http_listener.shutdown
+  end
+
+  def stop_background_tasks
+    tasks.each(&:shutdown)
   end
 
   def setup_event_queue

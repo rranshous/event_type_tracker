@@ -57,16 +57,12 @@ cleanup do |state|
 end
 
 # load up some state for the agent
-# TODO: move state management elsewhere
-state = StateLoader.load(State)
-puts "starting state: #{state}"
-SimpleAgent.instance.state = state
+SimpleAgent.instance.load_state
 SimpleAgent.instance.periodically do |state|
-  # seems like some sort of locking should be occuring right now
-  path = StateSaver.save(state)
-  puts "saved: #{path}"
+  SimpleAgent.instance.save_state
 end
-# TODO: periodically load the new state rollup
 
+# blocking until sigint
 SimpleAgent.instance.run!
+
 puts "DONE"
