@@ -23,6 +23,10 @@ def state_field name, kls
   State.add_field name, kls
 end
 
+def periodically &blk
+  SimpleAgent.instance.periodically(&blk)
+end
+
 
 class State
   FIELDS = {}
@@ -184,6 +188,7 @@ class SimpleAgent
     setup_event_queue
     start_http_listener
     load_state
+    start_background_loader
     start_background_saver
     puts "Started with state: #{state}"
   end
@@ -223,8 +228,18 @@ class SimpleAgent
     end
   end
 
+  def start_background_loader
+    periodically do |state|
+      load_state
+    end
+  end
+
   def load_state
-    self.state = StateLoader.load(State)
+    if state
+      self.state = state + StateLoader.load(State)
+    else
+      self.state = StateLoader.load(State)
+    end
   end
 
   def save_state

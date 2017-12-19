@@ -23,6 +23,6 @@ end
 # cleanup block will be run periodically
 # is used to "clean up" the data that it has been collecting
 cleanup do |state|
-  puts "in cleanup"
   state.event_types = state.event_types.uniq
+  puts "post cleanup state: #{state}"
 end
