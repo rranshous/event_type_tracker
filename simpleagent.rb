@@ -19,6 +19,58 @@ def cleanup &blk
   SimpleAgent.instance.periodically(&blk)
 end
 
+def state_field name, kls
+  State.add_field name, kls
+end
+
+
+class State
+  FIELDS = {}
+
+  def self.add_field name, kls
+    attr_accessor name
+    FIELDS[name.to_sym] = kls
+  end
+
+  def initialize
+    FIELDS.each do |name, kls|
+      self.send "#{name}=", kls.new
+    end
+  end
+
+  def to_s
+    "<State #{FIELDS.keys.map{|f| "#{f}:#{self.send(f)}" }.join(',')}>"
+  end
+
+  def inspect
+    inspect
+  end
+
+  def marshal_dump
+    d = Hash[FIELDS.to_a.map do |(name, _)|
+      [name, self.send(name)]
+    end]
+    d
+  end
+
+  def marshal_load data_hash
+    FIELDS.each do |name, _|
+      self.send "#{name}=", data_hash[name]
+    end
+  end
+
+  def + other
+    new_obj = self.class.new
+    FIELDS.each do |name, kls|
+      if kls == Array
+        new_obj.send "#{name}=", self.send(name) + other.send(name)
+      end
+    end
+    new_obj
+  end
+end
+
+
 class Condition
   attr_accessor :query
 
@@ -122,7 +174,6 @@ class SimpleAgent
     task = Concurrent::TimerTask.new(execution_interval: 10, timeout_interval: 10) do
       blk.call state
     end
-    puts "adding task: #{blk}"
     task.execute
     self.tasks << task
   end
@@ -139,7 +190,6 @@ class SimpleAgent
 
   def tick
     event_data = event_queue.pop(true)
-    puts "queue length: #{event_queue.length}"
     Broker.instance.event event_data
     :SUCCESS
   rescue ThreadError
@@ -169,7 +219,6 @@ class SimpleAgent
 
   def start_background_saver
     periodically do |state|
-      puts "periodic background save"
       save_state
     end
   end
@@ -180,7 +229,6 @@ class SimpleAgent
 
   def save_state
     path = StateSaver.save(state)
-    puts "saved: #{path}"
     path
   end
 
@@ -201,7 +249,6 @@ class SimpleAgent
   def setup_event_queue
     self.event_queue = SizedQueue.new(10)
     http_event_receiver.handle do |event_data|
-      puts "adding event: #{event_data}"
       event_queue << event_data
     end
   end
