@@ -6,6 +6,8 @@ require 'thread'
 
 state_field :event_types, Array
 
+set :http_port, (ARGV.shift || 8080).to_i
+
 # block will run for each event observed
 where 'eventType != null' do |event, state|
   event_type = event['eventType']

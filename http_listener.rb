@@ -3,7 +3,7 @@ require 'webrick'
 class HttpListener
   attr_accessor :server, :listeners, :port, :thread
 
-  def initialize port: 8080
+  def initialize port: 8081
     self.listeners = {}
     self.port = port
     self.server = WEBrick::HTTPServer.new :Port => port

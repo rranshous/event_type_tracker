@@ -3,6 +3,8 @@ require 'thread'
 require 'concurrent'
 require 'jmespath'
 
+Thread.abort_on_exception = true
+
 def where query_string, &blk
   # register ourselve as a subscriber to the queried events
   condition = Condition.new query_string
@@ -25,6 +27,10 @@ end
 
 def periodically &blk
   SimpleAgent.instance.periodically(&blk)
+end
+
+def set name, value
+  Config.set name.to_sym, value
 end
 
 
@@ -145,16 +151,41 @@ class Broker
   end
 end
 
+class Config
+  include Singleton
+
+  def initialize
+    @config = {}
+  end
+
+  def self.get key
+    self.instance.get key
+  end
+
+  def get key
+    @config[key]
+  end
+
+  def self.set key, value
+    self.instance.set key, value
+  end
+
+  def set key, value
+    @config[key] = value
+  end
+end
+
 class SimpleAgent
   include Singleton
 
-  attr_accessor :tasks, :state, :lock, :broker, :http_listener, :http_event_receiver, :running, :event_queue
+  attr_accessor :tasks, :state, :lock, :broker, :http_listener,
+                :http_event_receiver, :running, :event_queue
 
   def initialize
     self.tasks = []
     self.state = State.new
     self.lock = Mutex.new
-    self.http_listener = HttpListener.new
+    self.http_listener = HttpListener.new port: config.get(:http_port)
     self.http_event_receiver = HttpEventReceiver.new http_listener: http_listener
     self.broker = Broker.instance
     self.running = false
@@ -175,7 +206,8 @@ class SimpleAgent
   end
 
   def periodically &blk
-    task = Concurrent::TimerTask.new(execution_interval: 10, timeout_interval: 10) do
+    task_config = { execution_interval: 10, timeout_interval: 10 }
+    task = Concurrent::TimerTask.new(task_config) do
       blk.call state
     end
     task.execute
@@ -202,7 +234,6 @@ class SimpleAgent
   end
 
   def run!
-    puts "running!"
     trap 'SIGINT' do self.running = false end;
     start
     while running
@@ -245,6 +276,10 @@ class SimpleAgent
   def save_state
     path = StateSaver.save(state)
     path
+  end
+
+  def config
+    Config.instance
   end
 
   private
@@ -293,5 +328,9 @@ class StateSaver
 end
 
 at_exit do
-  SimpleAgent.instance.run!
+  if $!
+    puts "EXCEPTION: #{$!}"
+  else
+    SimpleAgent.instance.run!
+  end
 end
