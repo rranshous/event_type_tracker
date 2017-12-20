@@ -3,10 +3,9 @@ require_relative 'http_event_receiver'
 require_relative 'http_listener'
 require 'thread'
 
+set :http_port, (ARGV.shift || 8080).to_i
 
 state_field :event_types, Array
-
-set :http_port, (ARGV.shift || 8080).to_i
 
 # block will run for each event observed
 where 'eventType != null' do |event, state|

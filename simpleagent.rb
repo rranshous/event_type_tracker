@@ -220,8 +220,8 @@ class SimpleAgent
     setup_event_queue
     start_http_listener
     load_state
-    start_background_loader
     start_background_saver
+    start_background_loader
     puts "Started with state: #{state}"
   end
 
@@ -274,8 +274,7 @@ class SimpleAgent
   end
 
   def save_state
-    path = StateSaver.save(state)
-    path
+    StateSaver.save(state)
   end
 
   def config
@@ -311,12 +310,15 @@ class StateLoader
       Marshal.load File.read(file_path)
     end
     state = states.reduce(&:+)
-    state || state_class.new
+    state = state || state_class.new
+    puts "loaded: #{state}"
+    state
   end
 end
 
 class StateSaver
   def self.save state_object
+    puts "saving: #{state_object}"
     pid = Process.pid
     @time ||= Time.now.to_f
     filename = Pathname.new File.join(STATE_DIR, "#{@time}-#{pid}.rmarshal")
