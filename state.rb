@@ -3,7 +3,17 @@ class State
 
   def self.add_field name, initial_value, combiner=nil
     attr_accessor name
-    combiner ||= lambda { |s,o| s+o }
+    combiner ||= lambda { |s,o|
+      if s.nil? && o.nil?
+        nil
+      elsif s.nil?
+        o
+      elsif o.nil?
+        s
+      else
+        s + o
+      end
+    }
     FIELDS[name.to_sym] = OpenStruct.new(initial_value: initial_value,
                                          combiner: combiner)
   end

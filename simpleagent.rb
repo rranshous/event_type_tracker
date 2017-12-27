@@ -50,14 +50,14 @@ class SimpleAgent
   end
 
   def start
-    puts "starting"
+    #puts "starting"
     self.running = true
     setup_event_queue
     load_state
     start_background_saver
     #start_background_loader
     start_http_listener
-    puts "Started with state: #{state}"
+    #puts "Started with state: #{state}"
   end
 
   def tick
