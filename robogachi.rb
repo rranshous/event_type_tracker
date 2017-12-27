@@ -1,18 +1,23 @@
 require_relative 'simpleagent'
-require_relative 'http_event_receiver'
-require_relative 'http_listener'
 
+set :name, "robogachi"
 set :http_port, (ARGV.shift || 8080).to_i
 set :day_length_in_hours, 8
 set :meals_per_day, 3
 set :playtimes_per_day, 5
 set :memory_in_terms_of_meals, 1
 
+state_field :last_fed_at, nil, lambda { |s,o| [s,o].compact.max }
+state_field :times_of_hunger, []
+state_field :last_played_at, nil, lambda { |s,o| [s,o].compact.max }
+state_field :times_of_boredom, []
+
 #####################################
 puts "!Robogatchi!!!"
 puts "Day length: #{Config.get(:day_length_in_hours)} hours"
 puts "Needs #{Config.get(:meals_per_day)} meals per day"
 puts "Wants to play #{Config.get(:playtimes_per_day)} times per day"
+puts "--------------"
 #####################################
 
 set :day_length_in_seconds, Config.get(:day_length_in_hours) * 60 * 60
@@ -23,10 +28,6 @@ set :bored_period_seconds,
 set :memory_length_seconds,
   Config.get(:hunger_period_seconds) * Config.get(:memory_in_terms_of_meals)
 
-state_field :last_fed_at, nil, lambda { |s,o| [s,o].compact.max }
-state_field :times_of_hunger, []
-state_field :last_played_at, nil, lambda { |s,o| [s,o].compact.max }
-state_field :times_of_boredom, []
 
 where "action == 'feed'" do |event, state|
   puts "BEING FED"
@@ -67,6 +68,7 @@ cleanup do |state|
     bored_time + Config.get(:bored_period_seconds) >= Time.now
   end
 end
+
 
 def getting_hungry? state
   starts_getting_hungry_at(state) <= Time.now
@@ -126,5 +128,7 @@ def disposition state
     :bad
   elsif percent_bad < 0.9
     :very_bad
+  else
+    :unknown
   end
 end

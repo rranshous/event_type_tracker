@@ -1,11 +1,9 @@
 require_relative 'simpleagent'
-require_relative 'http_event_receiver'
-require_relative 'http_listener'
 require 'thread'
 
 set :http_port, (ARGV.shift || 8080).to_i
 
-state_field :event_types, Array
+state_field :event_types, []
 
 # block will run for each event observed
 where 'eventType != null' do |event, state|
@@ -27,3 +25,5 @@ cleanup do |state|
   state.event_types = state.event_types.uniq
   puts "post cleanup state: #{state}"
 end
+
+puts "starting"

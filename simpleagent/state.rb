@@ -56,10 +56,9 @@ class State
   end
 end
 
-STATE_DIR = './state'
 class StateLoader
-  def self.load state_class
-    states = Dir.glob("#{STATE_DIR}/*.rmarshal").map do |file_path|
+  def self.load state_class, state_dir='./state'
+    states = Dir.glob("#{state_dir}/*.rmarshal").map do |file_path|
       begin
         Marshal.load File.read(file_path)
       rescue ArgumentError
@@ -74,11 +73,12 @@ class StateLoader
 end
 
 class StateSaver
-  def self.save state_object
+  def self.save state_object, state_dir='./state'
     #puts "saving: #{state_object}"
     pid = Process.pid
     @time ||= Time.now.to_f
-    filename = Pathname.new File.join(STATE_DIR, "#{@time}-#{pid}.rmarshal")
+    FileUtils.mkdir_p state_dir
+    filename = Pathname.new File.join(state_dir, "#{@time}-#{pid}.rmarshal")
     File.open(filename, 'wb') do |fh|
       fh.write Marshal.dump(state_object)
     end
