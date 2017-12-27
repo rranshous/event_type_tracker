@@ -42,7 +42,7 @@ class SimpleAgent
   def periodically &blk
     task_config = { execution_interval: 10, timeout_interval: 10 }
     task = Concurrent::TimerTask.new(task_config) do
-      blk.call state
+      lock.synchronize { blk.call state }
     end
     task.execute
     self.tasks << task

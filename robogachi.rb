@@ -2,44 +2,39 @@ require_relative 'simpleagent'
 require_relative 'http_event_receiver'
 require_relative 'http_listener'
 
-class Hungry < Emotion
-  attr_accessor :when
-  def initialize
-    self.when = Time.now
-  end
-  def name
-    :hungry
-  end
-  def == other
-    self.when == other.when && self.name == other.name
-  end
-end
-
 set :http_port, (ARGV.shift || 8080).to_i
 set :hunger_period_seconds, 60
 
-state_field :last_fed_at, Time, lambda { |s,o| [s,o].max }
-state_field :feelings, Array
+state_field :last_fed_at, nil, lambda { |s,o| [s,o].compact.max }
+state_field :hunger_times, []
 
 where "action == 'feed'" do |event, state|
+  puts "BEING FED"
   state.last_fed_at = Time.now
 end
 
 report 'status' do |state|
   puts "getting status"
-  { feelings: state.feelings.map(&:name) }
+  { hunger_times: state.hunger_times.map(&:iso8601) }
 end
 
 periodically do |state|
-  hungry_at = last_fed_at + hunger_period_seconds
-  puts "now:#{Time.now}; last_fed_at:#{last_fed_at}; hungry_at:#{hungry_at}"
-  if Time.now > hungry_at
-    puts "hungry"
-    state.feelings << Hungry.new
+  if Time.now >= hungry_at(state)
+    puts "HUNGRY"
+    state.hunger_times << Time.now
+  else
+    puts "NOT HUNGRY"
   end
 end
 
 cleanup do |state|
-  puts "post cleanup state: #{state}"
-  state.feelings == state.feelings.uniq
+  state.hunger_times = state.hunger_times.uniq.sort
+end
+
+def hungry_at state
+  if state.last_fed_at.nil?
+    Time.now
+  else
+    state.last_fed_at + Config.get(:hunger_period_seconds)
+  end
 end

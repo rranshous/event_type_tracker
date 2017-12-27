@@ -1,14 +1,16 @@
 class State
   FIELDS = {}
 
-  def self.add_field name, kls, combiner=lambda { |s,o| s+o }
+  def self.add_field name, initial_value, combiner=nil
     attr_accessor name
-    FIELDS[name.to_sym] = OpenStruct.new(kls: kls, combiner: combiner)
+    combiner ||= lambda { |s,o| s+o }
+    FIELDS[name.to_sym] = OpenStruct.new(initial_value: initial_value,
+                                         combiner: combiner)
   end
 
   def initialize
     FIELDS.each do |name, opts|
-      self.send "#{name}=", kls.new
+      self.send "#{name}=", opts.initial_value
     end
   end
 
@@ -36,7 +38,9 @@ class State
   def + other
     new_obj = self.class.new
     FIELDS.each do |name, opts|
-      new_obj.send "#{name}=", opts.combiner.call(self, other)
+      my_value = self.send name
+      other_value = other.send name
+      new_obj.send "#{name}=", opts.combiner.call(my_value, other_value)
     end
     new_obj
   end
@@ -50,14 +54,14 @@ class StateLoader
     end
     state = states.reduce(&:+)
     state = state || state_class.new
-    puts "loaded: #{state}"
+    #puts "loaded: #{state}"
     state
   end
 end
 
 class StateSaver
   def self.save state_object
-    puts "saving: #{state_object}"
+    #puts "saving: #{state_object}"
     pid = Process.pid
     @time ||= Time.now.to_f
     filename = Pathname.new File.join(STATE_DIR, "#{@time}-#{pid}.rmarshal")
