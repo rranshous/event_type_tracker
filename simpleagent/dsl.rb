@@ -26,6 +26,11 @@ def report report_name, &blk
   SimpleAgent.instance.handle(report_name, &blk)
 end
 
+def action action_name, &blk
+  # register an action handler
+  SimpleAgent.instance.handle(action_name, &blk)
+end
+
 def cleanup &blk
   # register a periodic task
   SimpleAgent.instance.periodically(&blk)

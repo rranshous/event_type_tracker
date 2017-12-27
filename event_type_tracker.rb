@@ -14,7 +14,7 @@ end
 
 # block will run when the report is requested
 # results of block eval will be returned to requester
-report 'unique_event_types.json' do |state|
+report 'unique_event_types.json' do |state, opts|
   puts "generating report"
   state.event_types.uniq
 end

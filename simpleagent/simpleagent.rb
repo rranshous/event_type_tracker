@@ -38,7 +38,7 @@ class SimpleAgent
 
   def handle action, &blk
     http_listener.add_listener("/action/#{action}") do |req, res|
-      response = blk.call state
+      response = blk.call state, { request: req, response: res }
       res.body = JSON.dump(response)
       res.status = 200
       res.content_type = 'application/json'
