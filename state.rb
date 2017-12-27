@@ -1,13 +1,13 @@
 class State
   FIELDS = {}
 
-  def self.add_field name, kls
+  def self.add_field name, kls, combiner=lambda { |s,o| s+o }
     attr_accessor name
-    FIELDS[name.to_sym] = kls
+    FIELDS[name.to_sym] = OpenStruct.new(kls: kls, combiner: combiner)
   end
 
   def initialize
-    FIELDS.each do |name, kls|
+    FIELDS.each do |name, opts|
       self.send "#{name}=", kls.new
     end
   end
@@ -35,10 +35,8 @@ class State
 
   def + other
     new_obj = self.class.new
-    FIELDS.each do |name, kls|
-      if kls == Array
-        new_obj.send "#{name}=", self.send(name) + other.send(name)
-      end
+    FIELDS.each do |name, opts|
+      new_obj.send "#{name}=", opts.combiner.call(self, other)
     end
     new_obj
   end
