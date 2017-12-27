@@ -16,7 +16,7 @@ class SimpleAgent
 
   attr_accessor :tasks, :state, :lock, :broker, :http_listener,
                 :http_event_receiver, :running, :event_queue,
-                :name
+                :name, :state_root
 
   def initialize
     self.tasks = []
@@ -26,7 +26,8 @@ class SimpleAgent
     self.http_event_receiver = HttpEventReceiver.new http_listener: http_listener
     self.broker = Broker.instance
     self.running = false
-    self.name = Config.get :name
+    self.name = Config.get(:name)
+    self.state_root = Config.get(:state_root) || './state'
   end
 
   def subscribe criteria, &blk
@@ -117,7 +118,7 @@ class SimpleAgent
   end
 
   def state_path
-    "./state/#{name}"
+    "#{state_root}/#{name}"
   end
 
   def config

@@ -1,7 +1,8 @@
 require_relative 'simpleagent'
 
-set :name, "robogachi"
-set :http_port, (ARGV.shift || 8080).to_i
+set :name, ARGV.shift || "robogachi"
+set :http_port, (ENV['HTTP_PORT'] || 80).to_i
+set :state_root, ENV['STATE_DIR'] || './state'
 set :day_length_in_hours, 8
 set :meals_per_day, 3
 set :playtimes_per_day, 5
@@ -14,6 +15,7 @@ state_field :times_of_boredom, []
 
 #####################################
 puts "!Robogatchi!!!"
+puts "Named: #{Config.get(:name)}"
 puts "Day length: #{Config.get(:day_length_in_hours)} hours"
 puts "Needs #{Config.get(:meals_per_day)} meals per day"
 puts "Wants to play #{Config.get(:playtimes_per_day)} times per day"
