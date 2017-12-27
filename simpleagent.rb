@@ -36,27 +36,28 @@ class SimpleAgent
       response = blk.call state
       res.body = JSON.dump(response)
       res.status = 200
+      res.content_type = 'application/json'
     end
   end
 
   def periodically &blk
     task_config = { execution_interval: 10, timeout_interval: 10 }
     task = Concurrent::TimerTask.new(task_config) do
-      blk.call state
+      lock.synchronize { blk.call state }
     end
     task.execute
     self.tasks << task
   end
 
   def start
-    puts "starting"
+    #puts "starting"
     self.running = true
     setup_event_queue
-    start_http_listener
     load_state
     start_background_saver
-    start_background_loader
-    puts "Started with state: #{state}"
+    #start_background_loader
+    start_http_listener
+    #puts "Started with state: #{state}"
   end
 
   def tick

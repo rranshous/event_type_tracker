@@ -1,12 +1,19 @@
 require 'webrick'
 
+class Sponge
+  def method_missing *args
+  end
+end
+
 class HttpListener
   attr_accessor :server, :listeners, :port, :thread
 
-  def initialize port: 8081
+  def initialize port: 8080
     self.listeners = {}
     self.port = port
-    self.server = WEBrick::HTTPServer.new :Port => port
+    self.server = WEBrick::HTTPServer.new :Port => port,
+                                          :Logger => Sponge.new,
+                                          :AccessLog => Sponge.new
   end
 
   def add_listener path, &blk

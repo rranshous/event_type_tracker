@@ -31,8 +31,8 @@ def cleanup &blk
   SimpleAgent.instance.periodically(&blk)
 end
 
-def state_field name, kls
-  State.add_field name, kls
+def state_field name, kls, combiner=nil
+  State.add_field name, kls, combiner
 end
 
 def periodically &blk

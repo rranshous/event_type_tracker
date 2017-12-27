@@ -1,14 +1,26 @@
 class State
   FIELDS = {}
 
-  def self.add_field name, kls
+  def self.add_field name, initial_value, combiner=nil
     attr_accessor name
-    FIELDS[name.to_sym] = kls
+    combiner ||= lambda { |s,o|
+      if s.nil? && o.nil?
+        nil
+      elsif s.nil?
+        o
+      elsif o.nil?
+        s
+      else
+        s + o
+      end
+    }
+    FIELDS[name.to_sym] = OpenStruct.new(initial_value: initial_value,
+                                         combiner: combiner)
   end
 
   def initialize
-    FIELDS.each do |name, kls|
-      self.send "#{name}=", kls.new
+    FIELDS.each do |name, opts|
+      self.send "#{name}=", opts.initial_value
     end
   end
 
@@ -35,10 +47,10 @@ class State
 
   def + other
     new_obj = self.class.new
-    FIELDS.each do |name, kls|
-      if kls == Array
-        new_obj.send "#{name}=", self.send(name) + other.send(name)
-      end
+    FIELDS.each do |name, opts|
+      my_value = self.send name
+      other_value = other.send name
+      new_obj.send "#{name}=", opts.combiner.call(my_value, other_value)
     end
     new_obj
   end
@@ -48,18 +60,22 @@ STATE_DIR = './state'
 class StateLoader
   def self.load state_class
     states = Dir.glob("#{STATE_DIR}/*.rmarshal").map do |file_path|
-      Marshal.load File.read(file_path)
-    end
+      begin
+        Marshal.load File.read(file_path)
+      rescue ArgumentError
+        nil
+      end
+    end.compact
     state = states.reduce(&:+)
     state = state || state_class.new
-    puts "loaded: #{state}"
+    #puts "loaded: #{state}"
     state
   end
 end
 
 class StateSaver
   def self.save state_object
-    puts "saving: #{state_object}"
+    #puts "saving: #{state_object}"
     pid = Process.pid
     @time ||= Time.now.to_f
     filename = Pathname.new File.join(STATE_DIR, "#{@time}-#{pid}.rmarshal")
