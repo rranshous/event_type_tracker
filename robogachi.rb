@@ -4,6 +4,7 @@ require_relative 'http_listener'
 
 set :http_port, (ARGV.shift || 8080).to_i
 set :hunger_period_seconds, 60
+set :memory_length_seconds, Config.get(:hunger_period_seconds) * 1
 
 state_field :last_fed_at, nil, lambda { |s,o| [s,o].compact.max }
 state_field :times_of_hunger, []
@@ -28,7 +29,9 @@ periodically do |state|
 end
 
 cleanup do |state|
-  state.times_of_hunger = state.times_of_hunger.uniq.sort
+  state.times_of_hunger = state.times_of_hunger.uniq.sort.select do |hunger_time|
+    hunger_time + Config.get(:hunger_period_seconds) >= Time.now
+  end
 end
 
 def hungry_at state

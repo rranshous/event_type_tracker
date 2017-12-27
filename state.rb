@@ -50,8 +50,12 @@ STATE_DIR = './state'
 class StateLoader
   def self.load state_class
     states = Dir.glob("#{STATE_DIR}/*.rmarshal").map do |file_path|
-      Marshal.load File.read(file_path)
-    end
+      begin
+        Marshal.load File.read(file_path)
+      rescue ArgumentError
+        nil
+      end
+    end.compact
     state = states.reduce(&:+)
     state = state || state_class.new
     #puts "loaded: #{state}"

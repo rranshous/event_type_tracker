@@ -36,6 +36,7 @@ class SimpleAgent
       response = blk.call state
       res.body = JSON.dump(response)
       res.status = 200
+      res.content_type = 'application/json'
     end
   end
 
@@ -52,10 +53,10 @@ class SimpleAgent
     puts "starting"
     self.running = true
     setup_event_queue
-    start_http_listener
     load_state
     start_background_saver
-    start_background_loader
+    #start_background_loader
+    start_http_listener
     puts "Started with state: #{state}"
   end
 
